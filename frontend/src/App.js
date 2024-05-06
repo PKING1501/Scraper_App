@@ -1,8 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import Loader from './Loader'
 
 const App = () => {
   const [data, setData] = useState([{}])
-  const [headers, setHeaders] = useState([
+  const [attractionCount, setAttractionCount] = useState(0)
+  const [cityName, setCityName] = useState('');
+  const [loading, setLoading] = useState(false)
+  const [isDataAcquired, setIsDataAcquired] = useState(false)
+  const defaultHeaders = [
     {
       key: 'User-Agent',
       value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/109.0'
@@ -51,45 +56,23 @@ const App = () => {
       key: 'Referer',
       value: 'http://www.google.com/'
     }
-  ]);
-
-  const [urls, setUrls] = useState('')
-  
-  const convertToCSV = async (data) => {
-    try {
-      const response = await fetch('/scraper1name', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          headers: headers,
-          urls: urls
-        }),
-      });
-      if (response.ok) {
-        const responseData = await response.json();
-        const cityName = responseData.city_name;
-        const csvContent = "data:text/csv;charset=utf-8," + 
-                          data.map(row => Object.values(row).join(',')).join('\n');
-        const encodedURI = encodeURI(csvContent);
-        const link = document.createElement('a');
-        link.setAttribute('href', encodedURI);
-        link.setAttribute('download', `${cityName}_Attractions.csv`);
-        document.body.appendChild(link);
-        link.click();
-      } else {
-        console.log('Failed to fetch city name');
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
+  ];
+  const [headers, setHeaders] = useState(defaultHeaders);
+  const [urls, setUrls] = useState('');
 
   const handleAddHeader = () => {
     setHeaders([...headers, { key: '', value: '' }]);
     console.log('Added header:', headers)
+  };
+
+  const handleDeleteHeader = (index) => {
+    if (index < defaultHeaders.length) {
+      alert('Cannot delete default header');
+      return;
+    }
+    const updatedHeaders = [...headers];
+    updatedHeaders.splice(index, 1);
+    setHeaders(updatedHeaders);
   };
 
   const handleHeaderChange = (index, keyOrValue, value) => {
@@ -100,6 +83,7 @@ const App = () => {
   };
 
   const runPythonCode = async (e) => {
+    setLoading(true)
     console.log('Running Python code with initial data:', data)
     e.preventDefault()
     try {
@@ -110,6 +94,7 @@ const App = () => {
         },
         body: JSON.stringify({
           headers: headers,
+          attractionCount: attractionCount,
           urls: urls,
           // urls: urls.split(',').map(url => url.trim()), // Split URLs by comma and remove leading/trailing whitespaces
         }),
@@ -118,25 +103,58 @@ const App = () => {
         const responseData = await response.json()
         setData(responseData)
         console.log(data)
-        convertToCSV(data)
+        setLoading(false)
+        // Fetch city name
+        const cityNameResponse = await fetch('/scraper1name', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            headers: headers,
+            urls: urls
+          }),
+        });
+        if (cityNameResponse.ok) {
+          const cityNameData = await cityNameResponse.json();
+          setCityName(cityNameData.city_name);
+        } else {
+          console.log('Failed to fetch city name');
+        }
+        setIsDataAcquired(true)
       } else {
         console.log('Failed to fetch')
+        setLoading(false)
       }
-      // fetch("/Scrapper1").then(
-      //   res => res.json()
-      // ).then(
-      //   data => {
-      //     setData(data)
-      //     console.log(data)
-      //   }
-      // )
     } catch (error) {
       console.log(error)
+      setLoading(false)
     }
+    setLoading(false)
   };
 
+  const convertToCSV = () => {
+    const csvContent = "data:text/csv;charset=utf-8," + 
+                       data.map(row => Object.values(row).join(',')).join('\n');
+    const encodedURI = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedURI);
+    link.setAttribute('download', `${cityName}_${attractionCount}_Attractions.csv`);
+    document.body.appendChild(link);
+    link.click();
+  };
+
+  useEffect(() => {
+    if (isDataAcquired) {
+      convertToCSV();
+      setIsDataAcquired(false);
+    }
+  }, [isDataAcquired]);
+
   return (
-    <div>
+    <>
+      { loading? <Loader/> : (
+      <div>
       <form className='loginForm' onSubmit={runPythonCode}>
         <div className='headers'>
           {headers.map((header, index) => (
@@ -153,6 +171,9 @@ const App = () => {
                 value={header.value}
                 onChange={(e) => handleHeaderChange(index, 'value', e.target.value)}
               />
+              {index >= defaultHeaders.length && (
+                <button type='button' onClick={() => handleDeleteHeader(index)}>Delete</button>
+              )}
             </div>
           ))}
           <button type='button' onClick={handleAddHeader}>Add Header</button>
@@ -165,27 +186,43 @@ const App = () => {
             value={urls}
             onChange={(e) => setUrls(e.target.value)}
           />
+          <input
+            type='number'
+            placeholder='Number Of Attractions To Scrape'
+            required
+            value={attractionCount}
+            onChange={(e) => setAttractionCount(e.target.value)}
+          />
         </div>
         <input
           type='submit'
-          value='Login'
+          value='Scrape Data'
           className='loginBtn'
         />
       </form>
       <div>
-      <h1>Displaying Data</h1>
-      <ul>
-        {data.map((item, index) => (
-          <li key={index}>
-            <h2>{item.name}</h2>
-            <p>Address: {item.address}</p>
-            <p>Rating: {item.rating}</p>
-            {/* Add more fields as needed */}
-          </li>
-        ))}
-      </ul>
+        
+      {/* {isDataAcquired && <button onClick={convertToCSV}>Download CSV</button>} */}
+      
+      {isDataAcquired && (
+        <>
+          <h1>Displaying Data:</h1>
+          <ul>
+            {data.map((item, index) => (
+              <li key={index}>
+                <h2>{item.name}</h2>
+                <p>Address: {item.address}</p>
+                <p>Rating: {item.rating}</p>
+                {/* Add more fields as needed */}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
     </div>
+    )}
+    </>
   )
 }
 

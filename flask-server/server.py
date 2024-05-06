@@ -7,8 +7,9 @@ app = Flask(__name__)
 def scraper1():
     data = request.json
     headers = data.get('headers')
+    attractionCount = data.get('attractionCount')
     fetched_link = data.get('urls')
-    result = first_scraper(headers, fetched_link)
+    result = first_scraper(headers, fetched_link, attractionCount)
     return result
     
 @app.route('/scraper1name', methods=['POST'])

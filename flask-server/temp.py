@@ -82,8 +82,21 @@ def scrape_breadcrumb(url):
 
     return '>'.join(attraction_names)
 
-def first_scraper(headers, fetched_link):
+def convert_headers(headers):
+    formatted_headers = {}
+    for header in headers:
+        key = header['key']
+        value = header['value']
+        formatted_headers[key] = value
+    return formatted_headers
+
+def first_scraper(headers, fetched_link, attractionCount):
+#   print(HEADERS)
+  print("")
+  HEADERS.update(convert_headers(headers))
+  print(HEADERS)
   # Base URL
+  attractionCount = int(attractionCount)
   base_url = fetched_link
   base_url = convert_link_to_pagination_format(base_url)
 
@@ -97,8 +110,12 @@ def first_scraper(headers, fetched_link):
   if div_ci:
     content = div_ci.text.strip()
     number = int(re.search(r'\d+$', content).group())
+#   print(number, type(number), attractionCount, type(attractionCount))
+  if number <= attractionCount:
+    total_pages = math.ceil(number/30)
+  else:
+    total_pages = math.ceil(attractionCount/30)
 
-  total_pages = math.ceil(number/30)
   if not total_pages:
       total_pages=1
   print(total_pages)
@@ -231,6 +248,7 @@ def first_scraper(headers, fetched_link):
           final_content[i] = final_content[i][len('Visit website'):]
 
   df.insert(1,'address',final_content)
+  print(df.to_json(orient='records'))
   return df.to_json(orient='records')
 
 def name_of_city(headers, fetched_link):
