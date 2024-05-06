@@ -134,8 +134,15 @@ const App = () => {
   };
 
   const convertToCSV = () => {
-    const csvContent = "data:text/csv;charset=utf-8," + 
-                       data.map(row => Object.values(row).join(',')).join('\n');
+    // Extract column names from the first object in the data array
+    const columnNames = Object.keys(data[0]);
+
+    // Concatenate column names with data rows
+    const csvContent = `data:text/csv;charset=utf-8,${columnNames.join(',')}\n${
+      data.map(row => columnNames.map(name => row[name]).join(',')).join('\n')
+    }`;
+
+    // Create a downloadable link
     const encodedURI = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedURI);
@@ -143,6 +150,17 @@ const App = () => {
     document.body.appendChild(link);
     link.click();
   };
+
+  // const convertToCSV = () => {
+  //   const csvContent = "data:text/csv;charset=utf-8," + 
+  //                      data.map(row => Object.values(row).join(',')).join('\n');
+  //   const encodedURI = encodeURI(csvContent);
+  //   const link = document.createElement('a');
+  //   link.setAttribute('href', encodedURI);
+  //   link.setAttribute('download', `${cityName}_${attractionCount}_Attractions.csv`);
+  //   document.body.appendChild(link);
+  //   link.click();
+  // };
 
   useEffect(() => {
     if (isDataAcquired) {

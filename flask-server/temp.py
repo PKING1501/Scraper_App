@@ -5,6 +5,7 @@ import time
 import re
 import math
 from datetime import datetime, timezone
+from random import randint
 from IPython.display import clear_output
 clear_output(wait=True)
 
@@ -92,8 +93,27 @@ def convert_headers(headers):
 
 def first_scraper(headers, fetched_link, attractionCount):
 #   print(HEADERS)
+  headers = convert_headers(headers)
+#   if(headers==HEADERS):
+#     SCRAPEOPS_API_KEY = '71254d9c-929a-4eb4-ad75-a6968ca4ae20'
+
+#     def get_headers_list():
+#         response = requests.get('http://headers.scrapeops.io/v1/browser-headers?api_key=' + SCRAPEOPS_API_KEY)
+#         json_response = response.json()
+#         return json_response.get('result', [])
+    
+#     header_list = get_headers_list()
+
+#     def get_random_header(header_list):
+#         random_index = randint(0, len(header_list) - 1)
+#         return header_list[random_index]
+    
+#     HEADERS.update(get_random_header(header_list))
+
+#   else:
   print("")
-  HEADERS.update(convert_headers(headers))
+  HEADERS.update(headers)
+
   print(HEADERS)
   # Base URL
   attractionCount = int(attractionCount)
@@ -128,7 +148,7 @@ def first_scraper(headers, fetched_link, attractionCount):
       while len(attraction_names) == 0:
           attraction_names = scrape_attraction_names(url)
       all_attraction_names.extend(attraction_names)
-
+  print("Done1")
   all_attraction_no_reviews = []
 
   for page_number in range(total_pages):
@@ -138,6 +158,7 @@ def first_scraper(headers, fetched_link, attractionCount):
           attraction_no_reviews = scrape_attraction_no_reviews(url)
       all_attraction_no_reviews.extend(attraction_no_reviews)
 
+  print("Done2")
   section_texts = []
   ratings = []
   image_links = []
