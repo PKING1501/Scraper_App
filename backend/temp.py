@@ -128,9 +128,13 @@ def first_scraper(headers, fetched_link, attractionCount):
   number = 0
   div_ci = soup1.find('div', class_='Ci')
   if div_ci:
-    content = div_ci.text.strip()
-    number = int(re.search(r'\d+$', content).group())
-#   print(number, type(number), attractionCount, type(attractionCount))
+      content = div_ci.text.strip()
+      last_part = content.split('of')[-1].strip()
+      last_part = re.sub(r'<!--(.*?)-->', '', last_part)
+      number = int(last_part.replace(',', ''))
+
+  print(number)
+  # print(number, type(number), attractionCount, type(attractionCount))
   if(attractionCount<=0):
       total_pages = math.ceil(number / 30)
   else:
