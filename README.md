@@ -1,1 +1,2 @@
-# Scraper_App
+# Scrapper_Python_App
+IIM Calcutta Project

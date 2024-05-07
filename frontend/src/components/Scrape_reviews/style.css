@@ -1,0 +1,73 @@
+body {
+    margin-top: 10vh;
+    margin-left: 2vw;
+    background-color: #E4DEFE;
+    font-family: Arial, sans-serif; /* Use a common sans-serif font */
+    color: #333; /* Set default text color */
+    margin-right: 10vw;
+  }
+  
+  h2 {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+  
+  .input-section {
+    margin-bottom: 20px;
+  }
+  
+  .input-section label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 18px;
+  }
+  
+  .input-section input,
+  .input-section textarea {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+  }
+  
+  .input-section textarea {
+    resize: vertical; /* Allow vertical resizing only */
+  }
+  
+  .input-section button {
+    text-align: right;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #7A5CFA;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .input-section button:hover {
+    background-color: #0056b3;
+  }
+
+  .progress-section progress {
+    width: 100%;
+    height: 30px;
+  }
+  
+  .progress-section progress::-webkit-progress-bar {
+    background-color: #f1f1f1;
+  }
+  
+  .progress-section progress::-webkit-progress-value {
+    background-color: #7A5CFA;
+  }
+  
+  .progress-section progress::-moz-progress-bar {
+    background-color: #7A5CFA;
+  }
+  
+  .progress-section progress::-ms-fill {
+    background-color: #7A5CFA;
+  }
+  
