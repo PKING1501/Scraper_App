@@ -66,8 +66,5 @@ The application will be accessible in your web browser at `http://localhost:3000
 - Prem Kansagra
 - Raj Vinayak Meena
 ```
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+.
 
