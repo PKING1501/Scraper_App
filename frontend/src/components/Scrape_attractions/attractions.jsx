@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Loader from '../Loader/Loader';
+import io from 'socket.io-client';
 import './style.css';
+const socket = io('http://localhost:5000');
 
 const Attractions = () => {
   // State variables for input fields
@@ -9,6 +11,7 @@ const Attractions = () => {
   const [cityName, setCityName] = useState('');
   const [loading, setLoading] = useState(false)
   const [isDataAcquired, setIsDataAcquired] = useState(false)
+  const [progress, setProgress] = useState(0)
   const defaultHeaders = [
     {
       key: 'User-Agent',
@@ -273,12 +276,29 @@ const Attractions = () => {
   useEffect(() => {
     if (isDataAcquired) {
       downloadCSV();
+      setProgress(0);
       setIsDataAcquired(false);
     }
   }, [isDataAcquired]);
 
+  useEffect(() => {
+      socket.on('progress', ({ percentage }) => {
+          setProgress(percentage);
+      });
+      return () => {
+          socket.off('progress');
+      };
+  }, []);
+
   return (
-    <>{loading ? <Loader/> : (
+    <>{loading ? 
+    <>
+        <div className='progress-section'>
+          <label htmlFor='progress'>Progress:</label>
+          <progress color='#7A5CFA' id='progress' value={progress} max='100'></progress>
+        </div>
+        <Loader />
+    </> : (
     <>
       <div className='body'>
         <div className='input-section1'>
@@ -328,7 +348,7 @@ const Attractions = () => {
             id='starterLinks' 
             value={urls} 
             onChange={(e) => setUrls(e.target.value)} 
-            placeholder='Enter starter links...(To Enter multiple links)' // Placeholder text for the textarea
+            placeholder='Enter starter links...(Comma Seperated)' // Placeholder text for the textarea
             rows='4' // Make textarea bigger by specifying the number of rows
           />
         </div>
@@ -345,10 +365,6 @@ const Attractions = () => {
         <div className='input-section' style={{ textAlign: 'right' }}>
           <button onClick={runPythonCode}>Scrape Attractions</button>
         </div>
-        {/* <div className='progress-section'>
-          <label htmlFor='progress'>Progress:</label>
-          <progress id='progress' value={progress} max='100'></progress>
-        </div> */}
       </div>
     </>
   )}

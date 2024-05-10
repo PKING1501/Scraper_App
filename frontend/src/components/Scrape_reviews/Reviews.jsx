@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Loader from '../Loader/Loader';
 import './style.css';
+import io from 'socket.io-client';
+const socket = io('http://localhost:5000');
 
 const Attractions = () => {
   // State variables for input fields
@@ -8,6 +10,7 @@ const Attractions = () => {
   const [attractionCount1, setAttractionCount1] = useState(0)
   const [cityName, setCityName] = useState('');
   const [loading, setLoading] = useState(false)
+  const [progress1, setProgress1] = useState(0)
   const [isDataAcquired1, setIsDataAcquired1] = useState(false)
   const defaultHeaders = [
     {
@@ -278,8 +281,25 @@ const Attractions = () => {
     }
   }, [isDataAcquired1]);
 
+  useEffect(() => {
+      socket.on('progress', ({ percentage }) => {
+          setProgress1(percentage);
+      });
+      return () => {
+          socket.off('progress');
+      };
+  }, []);
+
   return (
-    <>{loading ? <Loader/> : (
+    <>{loading ?
+      <>
+        <div className='progress-section'>
+          <label htmlFor='progress'>Progress:</label>
+          <progress style={{ color: '#7A5CFA' }} id='progress' value={progress1} max='100'></progress>
+        </div>
+        <Loader />
+      </>
+      : (
     <>
       <div className='body'>
         <div className='input-section1'>
@@ -329,7 +349,7 @@ const Attractions = () => {
             id='starterLinks' 
             value={urls} 
             onChange={(e) => setUrls(e.target.value)} 
-            placeholder='Enter starter links...(To Enter multiple links)' // Placeholder text for the textarea
+            placeholder='Enter starter links...(Comma Seperated)' // Placeholder text for the textarea
             rows='4' // Make textarea bigger by specifying the number of rows
           />
         </div>

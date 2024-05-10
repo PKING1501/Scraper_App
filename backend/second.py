@@ -134,7 +134,10 @@ def second_scraper(headers, base_url, attractionCount):
         review_cards = soup.find_all('div', {'data-automation': 'reviewCard'})
         for card in review_cards:
             img_tag = card.find('img')
-            src = img_tag.get('src')
+            try:
+                src = img_tag.get('src')
+            except AttributeError:
+                src = ""  # If no img tag found, set src to empty string
             links.append(src)
         return links
 

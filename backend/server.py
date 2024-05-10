@@ -1,7 +1,4 @@
-from flask import Flask, Response, request
 from first import first_scraper, name_of_city
-from flask_cors import CORS
-from second import second_scraper, second_scraper_name
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
