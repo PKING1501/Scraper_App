@@ -5,7 +5,7 @@ import './style.css';
 const Attractions = () => {
   // State variables for input fields
   const [data, setData] = useState([{}])
-  const [attractionCount, setAttractionCount] = useState()
+  const [attractionCount, setAttractionCount] = useState(0)
   const [cityName, setCityName] = useState('');
   const [loading, setLoading] = useState(false)
   const [isDataAcquired, setIsDataAcquired] = useState(false)
@@ -100,7 +100,7 @@ const Attractions = () => {
     for (const url of urlList) {
       try {
         if (!isDataAcquired) {
-          const response = await fetch('/firstScraper', {
+          const response = await fetch('http://127.0.0.1:5000/firstScraper', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -113,10 +113,10 @@ const Attractions = () => {
           });
   
           if (response.ok) {
-            const responseData = await response.json();
+            const responseData = await response.text();
             setData(responseData);
   
-            const cityNameResponse = await fetch('/scraper1name', {
+            const cityNameResponse = await fetch('http://127.0.0.1:5000/scraper1name', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
@@ -225,36 +225,54 @@ const Attractions = () => {
   //   link.click();
   // };
   
-  const convertToCSV = () => {
-      // Extract column names from the first object in the data array
-      const columnNames = Object.keys(data[0]);
+  // const convertToCSV = () => {
+  //     // Extract column names from the first object in the data array
+  //     const columnNames = Object.keys(data[0]);
 
-      // Concatenate column names with data rows
-      const csvContent = `data:text/csv;charset=utf-8,${columnNames.join(',')}\n${
-        data.map(row => 
-          columnNames.map(name => {
-            // If the value contains a comma, enclose it within double quotes
-            if (typeof row[name] === 'string' && row[name].includes(',')) {
-              return `"${row[name]}"`;
-            }
-            return row[name];
-          }).join(',')
-        ).join('\n')
-      }`;
+  //     // Concatenate column names with data rows
+  //     const csvContent = `data:text/csv;charset=utf-8,${columnNames.join(',')}\n${
+  //       data.map(row => 
+  //         columnNames.map(name => {
+  //           // If the value contains a comma, enclose it within double quotes
+  //           if (typeof row[name] === 'string' && row[name].includes(',')) {
+  //             return `"${row[name]}"`;
+  //           }
+  //           return row[name];
+  //         }).join(',')
+  //       ).join('\n')
+  //     }`;
 
-      // Create a downloadable link
-      const encodedURI = encodeURI(csvContent);
-      const link = document.createElement('a');
-      link.setAttribute('href', encodedURI);
-      link.setAttribute('download', `${cityName}_${attractionCount}_Attractions.csv`);
-      document.body.appendChild(link);
-      link.click();
+  //     // Create a downloadable link
+  //     const encodedURI = encodeURI(csvContent);
+  //     const link = document.createElement('a');
+  //     link.setAttribute('href', encodedURI);
+  //     link.setAttribute('download', `${cityName}_${attractionCount}_Attractions.csv`);
+  //     document.body.appendChild(link);
+  //     link.click();
+  // };
+
+  const downloadCSV = () => {
+      try {
+          const csvData = data
+          // Create a Blob from CSV data
+          const blob = new Blob([csvData], { type: 'text/csv' });
+          // Create a URL for the Blob
+          const url = window.URL.createObjectURL(blob);
+          // Create a link element and simulate click to initiate download
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${cityName}_Attractions.csv`;
+          a.click();
+          // Clean up by revoking the object URL
+          window.URL.revokeObjectURL(url);
+      } catch (error) {
+          console.error('Error downloading CSV:', error);
+      }
   };
-
 
   useEffect(() => {
     if (isDataAcquired) {
-      convertToCSV();
+      downloadCSV();
       setIsDataAcquired(false);
     }
   }, [isDataAcquired]);
