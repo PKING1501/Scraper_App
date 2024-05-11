@@ -9,12 +9,14 @@ Scrapper App is a Python web application designed to extract data from TripAdvis
 ### Backend
 
 Navigate to the `backend` directory and install the required Python packages using the following command:
-
+```
+cd backend
+```
 ```
 pip install -r requirements.txt
 ```
 
-Ensure you have Python installed on your system.
+Ensure you have Python & pip installed on your system.
 
 The following packages will be installed:
 
@@ -28,10 +30,12 @@ The following packages will be installed:
 
 ### Frontend
 
-Navigate to the `frontend` directory and install the required Node.js packages using npm:
-
+Navigate to the `frontend` directory in a new terminal and install the required Node.js packages using npm:
 ```
-npm install
+cd frontend
+```
+```
+npm i --legacy-peer-deps
 ```
 
 ## Usage
@@ -42,7 +46,7 @@ npm install
 2. Run the Flask server using the following command:
 
 ```
-python server.py
+python first.py
 ```
 
 The server will start running on `http://localhost:5000`.
