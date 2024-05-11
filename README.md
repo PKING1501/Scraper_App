@@ -69,6 +69,3 @@ The application will be accessible in your web browser at `http://localhost:3000
 - Naman Kumar Jaiswal
 - Prem Kansagra
 - Raj Vinayak Meena
-```
-.
-
