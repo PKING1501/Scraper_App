@@ -13,6 +13,24 @@ from flask_socketio import SocketIO, emit
 from flask import Flask, Response, request
 from flask_cors import CORS
 import json
+from flask import Flask, request, jsonify, send_file
+from flask_socketio import SocketIO, emit
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import time
+import pandas as pd
+import os
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+
+if os.name == 'posix':
+    from webdriver_manager.chrome import ChromeDriverManager
+
+# Define the path to the dedicated folder
+output_folder = os.path.join(os.path.expanduser("~"), "Downloads", "scraper_outputs")
+
+# Create the folder if it doesn't exist
+os.makedirs(output_folder, exist_ok=True)
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
@@ -76,6 +94,164 @@ def nameForScraper2():
     result1 = second_scraper_name(headers, base_url)
     return result1
 
+if os.name == 'nt':
+    CHROME_DRIVER_PATH = r"C:\\Users\\Harsh\\Downloads\\chromedriver-win64\\chromedriver-win64"
+    os.environ['PATH'] += f";{CHROME_DRIVER_PATH}"  # Append to PATH
+else:
+    options = Options()
+    options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"  # Adjust as needed    
+    service = Service(ChromeDriverManager().install())
+
+# Endpoint to initiate scraping
+@app.route('/scrape_reviews', methods=['POST'])
+def scrape_reviews():
+    data = request.json
+    site_link = data.get('link')
+
+    if not site_link:
+        return jsonify({"error": "No link provided"}), 400
+
+    try:
+        reviews,location = get_google_reviews(site_link)
+        if not reviews:
+            return jsonify({"error": "No reviews found or failed to scrape"}), 500
+
+        # Save reviews to CSV
+        output_file = 'google_reviews.csv'
+        df = pd.DataFrame(reviews)
+        df.to_csv(os.path.join(output_folder, f"{location}.csv"), index=False)
+
+        return jsonify({"message": "Scraping completed successfully", "file": output_file}), 200
+    except Exception as e:
+        print(f"Scraping Error: {e}")
+        return jsonify({"error": "An error occurred during scraping"}), 500
+
+
+
+def try_extract(extraction_method, retries=2, default_value=None):
+    """
+    Tries to extract a value using the provided extraction method, up to retries times.
+    If extraction fails, returns the default_value.
+    """
+    attempt = 0
+    while attempt < retries:
+        try:
+            return extraction_method()  # Try the extraction method
+        except Exception as e:
+            print(f"Error on attempt {attempt + 1}")
+            # print(e)
+            attempt += 1
+    return default_value  # Return default value if both attempts fail
+
+def clean_filename(location_name):
+    cleaned_name = re.sub(r'[^a-zA-Z0-9\s]', '', location_name)  # Remove special characters
+    cleaned_name = re.sub(r'\s+', '_', cleaned_name.strip())  # Replace spaces with underscores
+    return cleaned_name
+
+# Main Scraping Function
+def get_google_reviews(site_link):
+    # Initialize the browser
+    if os.name == 'nt':
+        browser = webdriver.Chrome()
+    else:
+        browser = webdriver.Chrome(service=service, options=options)
+    
+    # Open the site
+    browser.get(site_link)
+    time.sleep(5)
+
+    # Locate the review container
+    reviews_container = browser.find_element(By.CLASS_NAME, 'review-dialog-list')  # Adjust if necessary
+
+    # Initial number of reviews
+    last_review_count = len(browser.find_elements(By.CLASS_NAME, 'TSUbDb'))  # Number of review elements initially
+    count = 1
+    while True:
+        count += 1
+        print(f"{count}: Scrolling... {last_review_count}")
+
+        # Scroll within the review container
+        browser.execute_script("arguments[0].scrollTo(0, arguments[0].scrollHeight);", reviews_container)
+        time.sleep(2)  # Allow time for loading new reviews
+        
+        # Get the new number of review elements
+        new_review_count = len(browser.find_elements(By.CLASS_NAME, 'TSUbDb'))
+        
+        # If the number of reviews hasn't changed, break the loop
+        if new_review_count == last_review_count:
+            print("No new reviews found, stopping scroll.")
+            break
+        
+        # Otherwise, update the last_review_count and continue scrolling
+        last_review_count = new_review_count
+    
+    location = browser.find_element(By.CLASS_NAME, 'Lhccdd').find_element(By.TAG_NAME, 'div').text
+    location=clean_filename(location)
+    # Continue with review scraping
+    reviews = []
+    review_elements = browser.find_elements(By.CLASS_NAME, 'WMbnJf')  # Locate all the reviews
+    for element in review_elements:
+        
+        # Extract user name with retry
+        user_name = try_extract(
+            lambda: element.find_element(By.CLASS_NAME, 'TSUbDb').find_element(By.TAG_NAME, 'a').text,
+            retries=2, default_value='Anonymous'
+        )
+        
+        # Extract rating with retry
+        rating_value = try_extract(
+            lambda: float(element.find_element(By.CLASS_NAME, 'lTi8oc.z3HNkc').get_attribute("aria-label").split(" ")[1]),
+            retries=2, default_value='Not Available'
+        )
+
+        # Extract review content with retry (Handle both formats)
+        cleaned_review = try_extract(
+            lambda: element.find_element(By.CLASS_NAME, 'review-full-text').get_attribute("innerHTML").replace('<br>', ' '),
+            retries=2, 
+            default_value=try_extract(
+                lambda: extract_review_content(element),
+                retries=2, 
+                default_value='No review content available'
+            )
+        )
+
+        # Extract user name with retry
+        time_review_added = try_extract(
+            lambda: element.find_element(By.CLASS_NAME, 'dehysf.lTi8oc').text,
+            retries=2, default_value='Not Available'
+        )
+
+        reviews.append({
+            'User': user_name,
+            'Rating': rating_value,
+            'Review': cleaned_review,
+            'Date Added': time_review_added,
+            'Data Collection Time': datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'),
+        })
+    
+    # Close the browser after scraping
+    browser.quit()
+    return reviews,location
+
+
+# Function to extract content from <span> before the <div> tag
+def extract_review_content(element):
+    try:
+        # Get the inner HTML of the span
+        review_full_text = element.find_element(By.XPATH, './/span[@data-expandable-section=""]').get_attribute("innerHTML")
+        
+        # Now, get everything before the first <div> tag
+        index_of_div = review_full_text.find('<div')  # Find the index of the first <div> tag
+        if index_of_div != -1:
+            review_content = review_full_text[:index_of_div].strip()  # Take everything before the <div> tag
+        else:
+            review_content = review_full_text.strip()  # If no <div> found, return the entire content
+        
+        return review_content
+    except Exception as e:
+        print(f"Error extracting review content: {e}")
+        return "No review content available"
+
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 @socketio.on('connect')
@@ -84,42 +260,6 @@ def handle_connect():
 
 def emit_progress(progress_percentage):
     socketio.emit('progress', {'percentage': progress_percentage})
-
-# user_agent_list = [
-#     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-#     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
-#     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.2420.81",
-#     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 OPR/109.0.0.0",
-#     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-#     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.4; rv:124.0) Gecko/20100101 Firefox/124.0",
-#     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
-#     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 OPR/109.0.0.0",
-#     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-#     "Mozilla/5.0 (X11; Linux i686; rv:124.0) Gecko/20100101 Firefox/124.0"
-# ]
-
-
-# def generate_headers(user_agent_list):
-#     user_agent = random.choice(user_agent_list)
-
-#     headers = {
-#         "User-Agent": user_agent,
-#         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,/;q=0.8",
-#         "Accept-Language": "en-US,en;q=0.5",
-#         "Accept-Encoding": "gzip, deflate",
-#         "Connection": "keep-alive",
-#         "Upgrade-Insecure-Requests": "1",
-#         "Sec-Fetch-Dest": "document",
-#         "Sec-Fetch-Mode": "navigate",
-#         "Sec-Fetch-Site": "none",
-#         "Sec-Fetch-User": "?1",
-#         "Cache-Control": "max-age=0",
-#         "Referer": "http://www.google.com/"
-#     }
-
-#     return headers
-
-# HEADERS=generate_headers(user_agent_list)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/109.0",
@@ -311,65 +451,7 @@ def first_scraper(headers, fetched_link, attractionCount):
   data = {'name': names_cleaned, 'emails':emails,'image': image_links, 'label': emails, 'phone': emails, 'rating':ratings, 'review_Count':section_texts, 'website': emails, 'breadcrumb':bread,'url':links, 'TimeStamp':timeStamp}
   df = pd.DataFrame(data)
 
-#   final_content = []
-#   for link in links:
-#     r = requests.get(link, headers=HEADERS)
-#     soup = BeautifulSoup(r.text, 'html.parser')
 
-#     parent_div_tag = soup.find('div', class_='wgNTK')
-
-#     if parent_div_tag:
-#         div_tag = parent_div_tag.find('div', class_='MJ')
-#         if div_tag:
-#             final_content.append(div_tag.get_text(separator=' ', strip=True))
-#         else:
-#             final_content.append("")
-#     else:
-#         final_content.append("")
-#     time.sleep(1)
-
-#   output_list = []
-
-#   for link in links:
-#       try:
-#           r = requests.get(link, headers=HEADERS)
-#           soup = BeautifulSoup(r.text, 'html.parser')
-
-#           button_tag = soup.find('button', class_='UikNM _G B- _S _W _T c G_ wSSLS wnNQG raEkE')
-
-#           if button_tag:
-#               span_tag = button_tag.find('span')
-#               if span_tag:
-#                   output_list.append(span_tag.text.strip())
-#               else:
-#                   output_list.append("")
-#           else:
-#               output_list.append("")
-
-#       except Exception as e:
-#           print(f"Error processing {link}: {e}")
-#           output_list.append("")
-      
-#       time.sleep(1)
-
-#   for i in range(len(final_content)):
-#       if final_content[i] == '':
-#           final_content[i] = output_list[i]
-#   for i in range(len(final_content)):
-#       if final_content[i].startswith('Address '):
-#           final_content[i] = final_content[i][len('Address '):]
-#   for i in range(len(final_content)):
-#       if final_content[i].startswith('Call'):
-#           final_content[i] = final_content[i][len('Call'):]
-#   for i in range(len(final_content)):
-#       if final_content[i].startswith('Email'):
-#           final_content[i] = final_content[i][len('Email'):]
-#   for i in range(len(final_content)):
-#       if final_content[i].startswith('Visit website'):
-#           final_content[i] = final_content[i][len('Visit website'):]
-
-#   df.insert(1,'address',final_content)
-#   print(df.to_json(orient='records'))
   print(df.tail())
   print(all_attraction_names)
   print(df.shape)
@@ -384,15 +466,6 @@ def name_of_city(headers, fetched_link):
     city_name = city_name.split('_')[0]
     print(city_name)
     return {"city_name": city_name}
-
-
-
-
-
-
-
-
-
 
 def add_or_param(input_link):
     index = input_link.find('Reviews')

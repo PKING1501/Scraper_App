@@ -291,7 +291,8 @@ const Attractions = () => {
   }, []);
 
   return (
-    <>{loading ?
+    <>
+    <h1 className="page-heading">TripAdvisor Reviews Scraper</h1>{loading ?
       <>
         <div className='progress-section'>
           <label htmlFor='progress'>Progress:</label>

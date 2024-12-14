@@ -291,7 +291,9 @@ const Attractions = () => {
   }, []);
 
   return (
-    <>{loading ? 
+    <>
+    <h1 className="page-heading">Attractions Scraper</h1>
+    {loading ? 
     <>
         <div className='progress-section'>
           <label htmlFor='progress'>Progress:</label>
