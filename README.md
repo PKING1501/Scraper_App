@@ -9,9 +9,11 @@ Scrapper App is a Python web application designed to extract data from TripAdvis
 ### Backend
 
 Navigate to the `backend` directory and install the required Python packages using the following command:
+
 ```
 cd backend
 ```
+
 ```
 pip install -r requirements.txt
 ```
@@ -27,13 +29,16 @@ The following packages will be installed:
 - ipython==8.12.3
 - pandas==2.2.2
 - Requests==2.31.0
+- ...
 
 ### Frontend
 
 Navigate to the `frontend` directory in a new terminal and install the required Node.js packages using npm:
+
 ```
 cd frontend
 ```
+
 ```
 npm i --legacy-peer-deps
 ```
