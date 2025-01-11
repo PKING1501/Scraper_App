@@ -12,6 +12,7 @@ const GoogleReviews = () => {
         return;
       }
 
+      {/*
       // Warn the user about Chrome windows
       const proceed = window.confirm(
         'Warning: Chrome windows will open during extraction. Please do not close/minimize any windows. Proceed?'
@@ -21,6 +22,7 @@ const GoogleReviews = () => {
         setStatusMessage('Scraping cancelled by the user.');
         return;
       }
+      */}
 
       setStatusMessage('Scraping started... Please wait.');
 

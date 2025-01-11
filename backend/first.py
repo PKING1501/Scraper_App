@@ -26,6 +26,39 @@ from selenium.webdriver.chrome.options import Options
 if os.name == 'posix':
     from webdriver_manager.chrome import ChromeDriverManager
 
+# Function to determine if the OS is Windows or macOS and set up Chrome options
+def get_browser():
+    options = Options()
+    options.add_argument("--headless")  # Run Chrome in headless mode
+    options.add_argument("--disable-gpu")  # Disable GPU hardware acceleration
+    options.add_argument("--no-sandbox")  # Bypass OS security model
+    options.add_argument("--disable-software-rasterizer")  # Disables software rendering
+
+    # For Windows OS
+    if os.name == 'nt':
+    
+#        CHROME_DRIVER_PATH = r"C:\\Users\\Harsh\\Downloads\\chromedriver-win64\\chromedriver-win64"
+#        os.environ['PATH'] += f";{CHROME_DRIVER_PATH}"  # Append to PATH
+#        browser = webdriver.Chrome(options=options)  # Initialize with headless options
+
+        chrome_driver_path = './chromedriver.exe'  # Relative path
+        # Ensure that chromedriver.exe is in the same directory as your script
+        if not os.path.exists(chrome_driver_path):
+            raise FileNotFoundError(f"ChromeDriver not found at {chrome_driver_path}")
+        
+        # Initialize the browser with the relative path to ChromeDriver
+        browser = webdriver.Chrome(executable_path=chrome_driver_path, options=options)  # Windows with relative path
+
+    # For macOS
+    else:
+        options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"  # Adjust as needed
+        service = Service(ChromeDriverManager().install())
+        browser = webdriver.Chrome(service=service, options=options)
+
+    return browser
+
+
+
 # Define the path to the dedicated folder
 output_folder = os.path.join(os.path.expanduser("~"), "Downloads", "scraper_outputs")
 
@@ -94,13 +127,13 @@ def nameForScraper2():
     result1 = second_scraper_name(headers, base_url)
     return result1
 
-if os.name == 'nt':
-    CHROME_DRIVER_PATH = r"C:\\Users\\Harsh\\Downloads\\chromedriver-win64\\chromedriver-win64"
-    os.environ['PATH'] += f";{CHROME_DRIVER_PATH}"  # Append to PATH
-else:
-    options = Options()
-    options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"  # Adjust as needed    
-    service = Service(ChromeDriverManager().install())
+#if os.name == 'nt':
+#    CHROME_DRIVER_PATH = r"C:\\Users\\Harsh\\Downloads\\chromedriver-win64\\chromedriver-win64"
+#    os.environ['PATH'] += f";{CHROME_DRIVER_PATH}"  # Append to PATH
+#else:
+#    options = Options()
+#    options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"  # Adjust as needed    
+#    service = Service(ChromeDriverManager().install())
 
 # Endpoint to initiate scraping
 @app.route('/scrape_reviews', methods=['POST'])
@@ -138,7 +171,7 @@ def try_extract(extraction_method, retries=2, default_value=None):
         try:
             return extraction_method()  # Try the extraction method
         except Exception as e:
-            print(f"Error on attempt {attempt + 1}")
+#            print(f"Error on attempt {attempt + 1}")
             # print(e)
             attempt += 1
     return default_value  # Return default value if both attempts fail
@@ -150,11 +183,16 @@ def clean_filename(location_name):
 
 # Main Scraping Function
 def get_google_reviews(site_link):
-    # Initialize the browser
-    if os.name == 'nt':
-        browser = webdriver.Chrome()
-    else:
-        browser = webdriver.Chrome(service=service, options=options)
+#    # Initialize the browser
+#    if os.name == 'nt':
+#        browser = webdriver.Chrome()
+#    else:
+#        browser = webdriver.Chrome(service=service, options=options)
+
+
+    # Initialize the browser in headless mode
+    browser = get_browser()
+    
     
     # Open the site
     browser.get(site_link)
