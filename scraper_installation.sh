@@ -3,22 +3,26 @@
 # Detecting Operating System
 OS=$(uname)
 
-# Go to Downloads directory
-cd ~/Downloads || exit  # MacOS/Linux or Windows
+cd ~/Downloads/Scraper_App/ || {
+  # If the cd fails, rename the directory
+  mv ~/Downloads/Scraper_App-main ~/Downloads/Scraper_App && echo "Renamed Scraper_App-main to Scraper_App";
+  # Try the cd command again after renaming
+  cd ~/Downloads/Scraper_App/ || exit 1;
+}
 
 # git config --global http.postBuffer 157286400
 
-# Check if the Scraper_App folder already exists
-if [ -d "Scraper_App" ]; then
-  echo "Scraper_App folder already exists. Pulling latest changes..."
-  cd Scraper_App || exit
-  git pull  # Update the existing repository
-else
-  # Clone the repository if the folder doesn't exist
-  echo "Cloning the repository..."
-  git clone --depth 1 https://github.com/PKING1501/Scraper_App.git
-  cd Scraper_App || exit
-fi
+## Check if the Scraper_App folder already exists
+#if [ -d "Scraper_App" ]; then
+#  echo "Scraper_App folder already exists. Pulling latest changes..."
+#  cd Scraper_App || exit
+#  git pull  # Update the existing repository
+#else
+#  # Clone the repository if the folder doesn't exist
+#  echo "Cloning the repository..."
+#  git clone --depth 1 https://github.com/PKING1501/Scraper_App.git
+#  cd Scraper_App || exit
+#fi
 
 # Create a virtual environment
 echo "Creating virtual environment..."
@@ -62,5 +66,3 @@ else
 fi
 
 echo "Frontend and backend servers are now running."
-
-
