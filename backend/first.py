@@ -26,37 +26,28 @@ from selenium.webdriver.chrome.options import Options
 if os.name == 'posix':
     from webdriver_manager.chrome import ChromeDriverManager
 
-# Function to determine if the OS is Windows or macOS and set up Chrome options
+# Function to determine the OS and set up Chrome options
 def get_browser():
     options = Options()
-    options.add_argument("--headless")  # Run Chrome in headless mode
-    options.add_argument("--disable-gpu")  # Disable GPU hardware acceleration
-    options.add_argument("--no-sandbox")  # Bypass OS security model
-    options.add_argument("--disable-software-rasterizer")  # Disables software rendering
+    options.add_argument("--headless")  # Run in headless mode
+    options.add_argument("--disable-gpu")  # Disable GPU
+    options.add_argument("--no-sandbox")  # Bypass OS security
+    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--window-size=1920,1080")  # Ensure compatibility in headless mode
 
-    # For Windows OS
-    if os.name == 'nt':
-    
-#        CHROME_DRIVER_PATH = r"C:\\Users\\Harsh\\Downloads\\chromedriver-win64\\chromedriver-win64"
-#        os.environ['PATH'] += f";{CHROME_DRIVER_PATH}"  # Append to PATH
-#        browser = webdriver.Chrome(options=options)  # Initialize with headless options
-
-        chrome_driver_path = './chromedriver.exe'  # Relative path
-        # Ensure that chromedriver.exe is in the same directory as your script
+    # Initialize browser
+    if os.name == 'nt':  # Windows
+        chrome_driver_path = './chromedriver.exe'
         if not os.path.exists(chrome_driver_path):
             raise FileNotFoundError(f"ChromeDriver not found at {chrome_driver_path}")
         
-        # Initialize the browser with the relative path to ChromeDriver
-        browser = webdriver.Chrome(executable_path=chrome_driver_path, options=options)  # Windows with relative path
-
-    # For macOS
-    else:
-        options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"  # Adjust as needed
+        service = Service(chrome_driver_path)
+    else:  # macOS/Linux
         service = Service(ChromeDriverManager().install())
-        browser = webdriver.Chrome(service=service, options=options)
 
+    browser = webdriver.Chrome(service=service, options=options)
     return browser
-
 
 
 # Define the path to the dedicated folder
@@ -192,7 +183,7 @@ def get_google_reviews(site_link):
 
     # Initialize the browser in headless mode
     browser = get_browser()
-    
+    print("Browser initialized successfully!")
     
     # Open the site
     browser.get(site_link)
