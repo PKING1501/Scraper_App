@@ -18,14 +18,6 @@ def run_command(command, shell=False):
         sys.exit(1)
     return stdout.decode()
 
-def upgrade_pip():
-    """Upgrade pip inside the virtual environment."""
-    try:
-        run_command([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
-    except Exception as e:
-        print(f"Error upgrading pip: {e}")
-        sys.exit(1)
-
 def start_admin_terminal(command):
     """Open a new terminal with administrative privileges to run a command."""
     subprocess.run([
@@ -58,28 +50,18 @@ os.chdir(scraper_app_dir)
 print("Creating virtual environment...")
 run_command(["python", "-m", "venv", "env"])
 
-# Activate the virtual environment
-activate_script = os.path.join(scraper_app_dir, "env", "Scripts", "activate")
-run_command([activate_script], shell=True)
-
-# Upgrade pip
-print("Upgrading pip...")
-upgrade_pip()
-
-# Install dependencies
-print("Installing dependencies from req.txt...")
-run_command(["pip", "install", "-r", "req.txt"])
-
-# Start the backend server in a new terminal with administrative privileges
-print("Starting the backend server in a new terminal...")
-subprocess.run([
-    "powershell",
-    "-Command",
-    "Set-ExecutionPolicy RemoteSigned -Scope CurrentUser"
-], check=True)
-
-backend_command = "cd backend; .\\env\\Scripts\\Activate.ps1; python first.py"
+backend_command = """
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force;
+cd ~/Downloads/Scraper_App/env/Scripts/;
+.\\Activate.ps1;
+python -m pip install --upgrade pip;
+cd ../../;
+pip install -r req.txt;
+cd ~/Downloads/Scraper_App/backend;
+python first.py
+"""
 start_admin_terminal(backend_command)
+
 
 # Start the frontend server in a new terminal with administrative privileges
 print("Starting the frontend server in a new terminal...")
