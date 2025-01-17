@@ -96,18 +96,25 @@ def scraper2():
     headers = data.get('headers')
     attractionCount = data.get('attractionCount')
     base_url = data.get('urls')
-    result = second_scraper(headers, base_url, attractionCount)
+    result, img_result = second_scraper(headers, base_url, attractionCount)
     # return result
     csv_data1 = result.to_csv(index=False)
+    csv_data2 = img_result.to_csv(index=False)
     
-    # Set response headers to indicate CSV content
-    headers = {
-        "Content-Disposition": "attachment; filename=data1.csv",
-        "Content-Type": "text/csv",
+    # # Set response headers to indicate CSV content
+    # headers = {
+    #     "Content-Disposition": "attachment; filename=data1.csv",
+    #     "Content-Type": "text/csv",
+    # }
+    
+    # # Return CSV data as a response
+    # return Response(csv_data1, headers=headers)
+    response_data = {
+        'reviews_csv': csv_data1,
+        'images_csv': csv_data2
     }
     
-    # Return CSV data as a response
-    return Response(csv_data1, headers=headers)
+    return jsonify(response_data)
     
 @app.route('/scraper2name', methods=['POST'])
 def nameForScraper2():
@@ -522,7 +529,7 @@ def second_scraper(headers, base_url, attractionCount):
             return "Attraction"
     def extract_rating_from_div_elements(soup):
     # Find all div elements with the specified classes
-      div_elements = soup.find_all('div', class_=['wSSLS', 'jVDab o W f u w GOdjs'])
+      div_elements = soup.find_all('div', class_=['wSSLS', 'jVDab W f u w GOdjs'])
 
       # Initialize rating to None
       rating = None
@@ -710,6 +717,27 @@ def second_scraper(headers, base_url, attractionCount):
         if index != -1:
             url = url[:index] + url[index + len("-or{}"):]
         return url
+    
+    def get_user_review_images(soup):
+        # links = []
+        # review_cards = soup.find_all('div', {'data-automation': 'reviewCard'})
+        # for card in review_cards:
+        #     img_tags = card.find_all('img')  # Extract all images in a review
+        #     srcs = [img.get('src') for img in img_tags if img.get('src')]
+        #     links.append(",".join(srcs))  # Store as comma-separated string
+        # return links
+        image_urls = []
+
+        # Find all divs with class 'ajoIU'
+        review_image_divs = soup.find_all('div', class_='ajoIU')
+
+        for div in review_image_divs:
+            img_tag = div.find('img')
+            if img_tag and img_tag.get('src'):
+                image_urls.append(img_tag['src'])  # Extract and store the src attribute
+        
+        return image_urls  # Return the list of all image URLs
+
 
     all_reviews = []
     review_headings = []
@@ -720,6 +748,7 @@ def second_scraper(headers, base_url, attractionCount):
     profile_img = []
     name_list = []
     overall_rating = []
+    review_imgs = []
 
     r = requests.get(base_url.format(0), headers=HEADERS)
     time.sleep(2)
@@ -777,6 +806,13 @@ def second_scraper(headers, base_url, attractionCount):
         review_scores.extend(review_score)
         img = scrape_profile_img(soup)
         profile_img.extend(img)
+
+        single_review_imgs = get_user_review_images(soup)
+        print("Images Found: ")
+        print(single_review_imgs)
+        print("")
+        review_imgs.extend(single_review_imgs)
+
         print(page_number)
         progress_percentage = (page_number + 1) / total_pages * 100
         emit_progress(progress_percentage)
@@ -858,11 +894,16 @@ def second_scraper(headers, base_url, attractionCount):
         'timestamp': timeStamp
     }
 
+    imgs = {
+        'Links': review_imgs
+    }
+
     for key, value in data.items():
       print(f"Length of '{key}': {len(value)}")
 
     df = pd.DataFrame(data)
-    return df
+    df1 = pd.DataFrame(imgs)
+    return df, df1
 
 def second_scraper_name(headers, base_url):
     headers = convert_headers(headers)
