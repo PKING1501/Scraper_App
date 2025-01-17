@@ -94,7 +94,7 @@ const Attractions = () => {
     console.log('Updated headers1:', headers1)
   };
 
-  const runPythonCode1 = async (e) => {
+const runPythonCode1 = async (e) => {
     e.preventDefault();
     setLoading(true);
   
@@ -103,6 +103,28 @@ const Attractions = () => {
     for (const url of urlList) {
       try {
         if (!isDataAcquired1) {
+          // First get the attraction name
+          const cityNameResponse = await fetch('http://127.0.0.1:5000/scraper2name', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              headers: headers1,
+              urls: url
+            }),
+          });
+
+          let attractionName = 'attraction';
+          if (cityNameResponse.ok) {
+            const cityNameData = await cityNameResponse.json();
+            attractionName = cityNameData.city_name;
+            setCityName(cityNameData.city_name);
+          } else {
+            console.log('Failed to fetch attraction name');
+          }
+
+          // Then get the review data
           const response = await fetch('http://127.0.0.1:5000/secondScraper', {
             method: 'POST',
             headers: {
@@ -116,28 +138,32 @@ const Attractions = () => {
           });
   
           if (response.ok) {
-            const responseData1 = await response.text();
-            console.log('Received data:', responseData1);
-            setData1(responseData1);
-  
-            const cityNameResponse = await fetch('http://127.0.0.1:5000/scraper2name', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                headers: headers1,
-                urls: url
-              }),
-            });
-  
-            if (cityNameResponse.ok) {
-              const cityNameData = await cityNameResponse.json();
-              setCityName(cityNameData.city_name);
-              setIsDataAcquired1(true);
-            } else {
-              console.log('Failed to fetch city name');
-            }
+            const responseData = await response.json();
+            
+            // Download reviews CSV
+            const reviewsBlob = new Blob([responseData.reviews_csv], { type: 'text/csv' });
+            const reviewsUrl = window.URL.createObjectURL(reviewsBlob);
+            const reviewsLink = document.createElement('a');
+            reviewsLink.href = reviewsUrl;
+            reviewsLink.setAttribute('download', `${attractionName}_reviews.csv`);
+            document.body.appendChild(reviewsLink);
+            reviewsLink.click();
+            document.body.removeChild(reviewsLink);
+            window.URL.revokeObjectURL(reviewsUrl);
+            
+            // Download images CSV
+            const imagesBlob = new Blob([responseData.images_csv], { type: 'text/csv' });
+            const imagesUrl = window.URL.createObjectURL(imagesBlob);
+            const imagesLink = document.createElement('a');
+            imagesLink.href = imagesUrl;
+            imagesLink.setAttribute('download', `${attractionName}_images.csv`);
+            document.body.appendChild(imagesLink);
+            imagesLink.click();
+            document.body.removeChild(imagesLink);
+            window.URL.revokeObjectURL(imagesUrl);
+            
+            setData1(responseData.reviews_csv);
+            setIsDataAcquired1(true);
           } else {
             console.log('Failed to fetch data');
           }
@@ -147,7 +173,62 @@ const Attractions = () => {
       }
     }
     setLoading(false);
-  };  
+};
+
+  // const runPythonCode1 = async (e) => {
+  //   e.preventDefault();
+  //   setLoading(true);
+  
+  //   const urlList = urls.split(',').map(url => url.trim());
+  
+  //   for (const url of urlList) {
+  //     try {
+  //       if (!isDataAcquired1) {
+  //         const response = await fetch('http://127.0.0.1:5000/secondScraper', {
+  //           method: 'POST',
+  //           headers: {
+  //             'Content-Type': 'application/json'
+  //           },
+  //           body: JSON.stringify({
+  //             headers: headers1,
+  //             attractionCount: attractionCount1,
+  //             urls: url
+  //           }),
+  //         });
+  
+  //         if (response.ok) {
+  //           const responseData1 = await response.text();
+  //           console.log('Received data:', responseData1);
+  //           setData1(responseData1);
+  
+  //           const cityNameResponse = await fetch('http://127.0.0.1:5000/scraper2name', {
+  //             method: 'POST',
+  //             headers: {
+  //               'Content-Type': 'application/json'
+  //             },
+  //             body: JSON.stringify({
+  //               headers: headers1,
+  //               urls: url
+  //             }),
+  //           });
+  
+  //           if (cityNameResponse.ok) {
+  //             const cityNameData = await cityNameResponse.json();
+  //             setCityName(cityNameData.city_name);
+  //             setIsDataAcquired1(true);
+  //           } else {
+  //             console.log('Failed to fetch city name');
+  //           }
+  //         } else {
+  //           console.log('Failed to fetch data');
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.log(error);
+  //     }
+  //   }
+  //   setLoading(false);
+  // };  
 
   // const runPythonCode1 = async (e) => {
   //   setLoading(true)
@@ -274,12 +355,12 @@ const Attractions = () => {
       }
   };
 
-  useEffect(() => {
-    if (isDataAcquired1) {
-      downloadCSV();
-      setIsDataAcquired1(false);
-    }
-  }, [isDataAcquired1]);
+  // useEffect(() => {
+  //   if (isDataAcquired1) {
+  //     downloadCSV();
+  //     setIsDataAcquired1(false);
+  //   }
+  // }, [isDataAcquired1]);
 
   useEffect(() => {
       socket.on('progress', ({ percentage }) => {
