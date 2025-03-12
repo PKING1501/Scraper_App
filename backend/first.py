@@ -20,35 +20,33 @@ from selenium.webdriver.common.by import By
 import time
 import pandas as pd
 import os
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.edge.service import Service
+from selenium.webdriver.edge.options import Options
 
 if os.name == 'posix':
-    from webdriver_manager.chrome import ChromeDriverManager
+    from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
-# Function to determine the OS and set up Chrome options
+# Function to determine the OS and set up Edge options
 def get_browser():
     options = Options()
-    options.add_argument("--headless")  # Run in headless mode
     options.add_argument("--disable-gpu")  # Disable GPU
     options.add_argument("--no-sandbox")  # Bypass OS security
     options.add_argument("--disable-software-rasterizer")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--window-size=1920,1080")  # Ensure compatibility in headless mode
+    options.add_argument("--disable-blink-features=AutomationControlled")  # Helps avoid detection
 
-    # Initialize browser
+    # Initialize Edge browser
     if os.name == 'nt':  # Windows
-        chrome_driver_path = './chromedriver.exe'
-        if not os.path.exists(chrome_driver_path):
-            raise FileNotFoundError(f"ChromeDriver not found at {chrome_driver_path}")
+        edge_driver_path = './msedgedriver.exe'
+        if not os.path.exists(edge_driver_path):
+            raise FileNotFoundError(f"Edge WebDriver not found at {edge_driver_path}")
         
-        service = Service(chrome_driver_path)
+        service = Service(edge_driver_path)
     else:  # macOS/Linux
-        service = Service(ChromeDriverManager().install())
+        service = Service(EdgeChromiumDriverManager().install())
 
-    browser = webdriver.Chrome(service=service, options=options)
+    browser = webdriver.Edge(service=service, options=options)
     return browser
-
 
 # Define the path to the dedicated folder
 output_folder = os.path.join(os.path.expanduser("~"), "Downloads", "scraper_outputs")
@@ -96,25 +94,18 @@ def scraper2():
     headers = data.get('headers')
     attractionCount = data.get('attractionCount')
     base_url = data.get('urls')
-    result, img_result = second_scraper(headers, base_url, attractionCount)
+    result = second_scraper(headers, base_url, attractionCount)
     # return result
     csv_data1 = result.to_csv(index=False)
-    csv_data2 = img_result.to_csv(index=False)
     
-    # # Set response headers to indicate CSV content
-    # headers = {
-    #     "Content-Disposition": "attachment; filename=data1.csv",
-    #     "Content-Type": "text/csv",
-    # }
-    
-    # # Return CSV data as a response
-    # return Response(csv_data1, headers=headers)
-    response_data = {
-        'reviews_csv': csv_data1,
-        'images_csv': csv_data2
+    # Set response headers to indicate CSV content
+    headers = {
+        "Content-Disposition": "attachment; filename=data1.csv",
+        "Content-Type": "text/csv",
     }
     
-    return jsonify(response_data)
+    # Return CSV data as a response
+    return Response(csv_data1, headers=headers)
     
 @app.route('/scraper2name', methods=['POST'])
 def nameForScraper2():
@@ -125,13 +116,6 @@ def nameForScraper2():
     result1 = second_scraper_name(headers, base_url)
     return result1
 
-#if os.name == 'nt':
-#    CHROME_DRIVER_PATH = r"C:\\Users\\Harsh\\Downloads\\chromedriver-win64\\chromedriver-win64"
-#    os.environ['PATH'] += f";{CHROME_DRIVER_PATH}"  # Append to PATH
-#else:
-#    options = Options()
-#    options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"  # Adjust as needed    
-#    service = Service(ChromeDriverManager().install())
 
 # Endpoint to initiate scraping
 @app.route('/scrape_reviews', methods=['POST'])
@@ -181,14 +165,7 @@ def clean_filename(location_name):
 
 # Main Scraping Function
 def get_google_reviews(site_link):
-#    # Initialize the browser
-#    if os.name == 'nt':
-#        browser = webdriver.Chrome()
-#    else:
-#        browser = webdriver.Chrome(service=service, options=options)
 
-
-    # Initialize the browser in headless mode
     browser = get_browser()
     print("Browser initialized successfully!")
     
@@ -529,7 +506,7 @@ def second_scraper(headers, base_url, attractionCount):
             return "Attraction"
     def extract_rating_from_div_elements(soup):
     # Find all div elements with the specified classes
-      div_elements = soup.find_all('div', class_=['wSSLS', 'jVDab W f u w GOdjs'])
+      div_elements = soup.find_all('div', class_=['wSSLS', 'jVDab o W f u w GOdjs'])
 
       # Initialize rating to None
       rating = None
@@ -717,27 +694,6 @@ def second_scraper(headers, base_url, attractionCount):
         if index != -1:
             url = url[:index] + url[index + len("-or{}"):]
         return url
-    
-    def get_user_review_images(soup):
-        # links = []
-        # review_cards = soup.find_all('div', {'data-automation': 'reviewCard'})
-        # for card in review_cards:
-        #     img_tags = card.find_all('img')  # Extract all images in a review
-        #     srcs = [img.get('src') for img in img_tags if img.get('src')]
-        #     links.append(",".join(srcs))  # Store as comma-separated string
-        # return links
-        image_urls = []
-
-        # Find all divs with class 'ajoIU'
-        review_image_divs = soup.find_all('div', class_='ajoIU')
-
-        for div in review_image_divs:
-            img_tag = div.find('img')
-            if img_tag and img_tag.get('src'):
-                image_urls.append(img_tag['src'])  # Extract and store the src attribute
-        
-        return image_urls  # Return the list of all image URLs
-
 
     all_reviews = []
     review_headings = []
@@ -748,7 +704,6 @@ def second_scraper(headers, base_url, attractionCount):
     profile_img = []
     name_list = []
     overall_rating = []
-    review_imgs = []
 
     r = requests.get(base_url.format(0), headers=HEADERS)
     time.sleep(2)
@@ -806,13 +761,6 @@ def second_scraper(headers, base_url, attractionCount):
         review_scores.extend(review_score)
         img = scrape_profile_img(soup)
         profile_img.extend(img)
-
-        single_review_imgs = get_user_review_images(soup)
-        print("Images Found: ")
-        print(single_review_imgs)
-        print("")
-        review_imgs.extend(single_review_imgs)
-
         print(page_number)
         progress_percentage = (page_number + 1) / total_pages * 100
         emit_progress(progress_percentage)
@@ -894,16 +842,11 @@ def second_scraper(headers, base_url, attractionCount):
         'timestamp': timeStamp
     }
 
-    imgs = {
-        'Links': review_imgs
-    }
-
     for key, value in data.items():
       print(f"Length of '{key}': {len(value)}")
 
     df = pd.DataFrame(data)
-    df1 = pd.DataFrame(imgs)
-    return df, df1
+    return df
 
 def second_scraper_name(headers, base_url):
     headers = convert_headers(headers)
